@@ -1,0 +1,29 @@
+# Machine-specific
+settings.json
+.credentials.json
+
+# Session ephemeral data
+todos/
+shell-snapshots/
+plans/
+projects/
+tasks/
+
+# Cache and history
+cache/
+paste-cache/
+history.jsonl
+file-history/
+
+# Debug and backups
+debug/
+backups/
+*.bak.*
+
+# External plugins (managed separately)
+plugins/
+
+# Duplicate copies (canonical files are in commands/, lib/, scripts/)
+commands/commands/
+lib/lib/
+scripts/scripts/
