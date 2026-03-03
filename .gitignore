@@ -27,3 +27,5 @@ plugins/
 commands/commands/
 lib/lib/
 scripts/scripts/
+mcp-needs-auth-cache.json
+telemetry/

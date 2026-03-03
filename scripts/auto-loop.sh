@@ -14,6 +14,7 @@ DONE_FILE="$PROJECT_DIR/.claude/auto-done"
 GOAL_FILE="$PROJECT_DIR/.claude/prompts/goal.md"
 PLAN_FILE="$PROJECT_DIR/.claude/plan.md"
 LAST_OUTPUT_FILE="$PROJECT_DIR/.claude/auto-last-output.log"
+RATE_LIMIT_WAIT_FILE="$PROJECT_DIR/.claude/auto-rate-limit-wait.json"
 
 MAX_RESTARTS="${AUTO_LOOP_MAX_RESTARTS:-10}"
 NO_PROGRESS_LIMIT="${AUTO_LOOP_NO_PROGRESS_LIMIT:-4}"
@@ -143,6 +144,46 @@ compute_backoff() {
   echo "$delay"
 }
 
+wait_for_rate_limit_reset() {
+  if [[ ! -f "$RATE_LIMIT_WAIT_FILE" ]]; then
+    return 0
+  fi
+
+  local resets_at
+  resets_at=$(grep -o '"resetsAt"[[:space:]]*:[[:space:]]*"[^"]*"' "$RATE_LIMIT_WAIT_FILE" | head -1 | sed 's/.*"resetsAt"[[:space:]]*:[[:space:]]*"//;s/"//')
+
+  if [[ -z "$resets_at" ]]; then
+    echo "[Warn] Rate limit wait file found but no resetsAt. Removing and continuing."
+    rm -f "$RATE_LIMIT_WAIT_FILE"
+    return 0
+  fi
+
+  local reset_epoch now_epoch wait_sec
+  reset_epoch=$(date -d "$resets_at" +%s 2>/dev/null)
+  if [[ -z "$reset_epoch" ]]; then
+    echo "[Warn] Could not parse resetsAt: $resets_at. Removing and continuing."
+    rm -f "$RATE_LIMIT_WAIT_FILE"
+    return 0
+  fi
+
+  now_epoch=$(date +%s)
+  wait_sec=$(( reset_epoch - now_epoch ))
+
+  if (( wait_sec > 0 )); then
+    local reset_local
+    reset_local=$(date -d "$resets_at" '+%Y-%m-%d %H:%M:%S %Z' 2>/dev/null || echo "$resets_at")
+    echo "--- Rate limit hit. Waiting until $reset_local (${wait_sec}s) ---"
+    sleep "$wait_sec"
+    # Add a small buffer after reset
+    sleep 10
+  else
+    echo "--- Rate limit reset time already passed. Continuing. ---"
+  fi
+
+  rm -f "$RATE_LIMIT_WAIT_FILE"
+  return 0
+}
+
 clamp_numeric_config
 ensure_preconditions
 
@@ -161,6 +202,9 @@ fi
 
 while true; do
   ensure_preconditions
+
+  # Wait for rate limit reset if needed (written by CC's budget policy)
+  wait_for_rate_limit_reset
 
   before_hash="$(plan_hash)"
 

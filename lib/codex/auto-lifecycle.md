@@ -8,6 +8,17 @@ DISCUSS → PLAN → IMPLEMENT → TEST → EVALUATE → (CONTINUE or REVISE)
    └────────────────────────────────────────────────────┘
 ```
 
+## Fast Path（DISCUSS/PLAN スキップ）
+
+以下の条件を **すべて** 満たすタスクは DISCUSS/PLAN をスキップして直接 IMPLEMENT に入れる:
+1. 単一ファイルの軽微変更（概ね1ファイル・50行以内）
+2. 公開I/F・スキーマ・設定ファイルの変更なし
+3. Training Execution Protocol に影響なし
+4. 既存テストで安全確認可能（新規テスト不要）
+
+Fast Path の場合、CCが plan.md に1タスク（検証プローブ付き）を追記し、Phase 3 へ直行する。
+EVALUATE で問題が見つかれば通常パス（Phase 1）にフォールバックする。
+
 ## Phase 1: DISCUSS（問題定義・方針決定）
 
 ルーティングモード（`~/.claude/lib/codex/routing-policy.md`）に応じて動作を分岐する:
@@ -36,6 +47,7 @@ DISCUSS の合意に基づき、CC×Codexで実装計画書を作成する。
 - 各タスクの担当割り当て（CC / Codex）
 - タスク間の依存関係
 - 各タスクの完了条件
+- **検証プローブ**（再現手順 + 受入チェック。TEST フェーズで何を確認すれば成功かを事前定義）
 - テストコマンド／検証方法
 
 ### 担当割り当て基準

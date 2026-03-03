@@ -33,6 +33,18 @@ Compatible-With: 1
 2. `~/.claude/lib/codex/routing-policy.md` のモード再評価（手動指定時はスキップ、`unlimited` 時も実行）
 - バジェット 100% 到達時は「セッション引き継ぎ＆自動再開」に遷移
 
+## Fast Path 判定
+Phase 1 に入る前に、以下の条件を **すべて** 満たすか判定する:
+1. 単一ファイルの軽微変更（概ね1ファイル・50行以内）
+2. 公開I/F・スキーマ・設定ファイルの変更なし
+3. Training Execution Protocol に影響なし
+4. 既存テストで安全確認可能（新規テスト不要）
+
+**全て満たす → Fast Path**: DISCUSS/PLANをスキップし、CCが直接 plan.md に1タスクを追記して Phase 3 へ。
+`[Fast Path] {タスク概要} → Phase 3 直行` と通知。
+
+**1つでも満たさない → 通常パス**: Phase 1 へ。
+
 ## Phase 1: DISCUSS（問題定義）
 ルーティングモードに応じて動作を分岐する（`~/.claude/lib/codex/routing-policy.md` Phase 1 参照）:
 - **balanced / codex-heavy**: goal.md + 前回EVALUATE結果（あれば）をテーマに、/discuss-exec のforkパターンで議論する
@@ -43,6 +55,7 @@ Compatible-With: 1
 DISCUSS の合意（または CC 分析結果）をもとに実装計画書を作成する。
 - `~/.claude/lib/codex/plan-template.md` の形式に従う
 - 各タスクの [CC] / [Codex] 割り当ては、現在のルーティングモードに従う（`~/.claude/lib/codex/auto-lifecycle.md`）
+- 各タスクに**検証プローブ**を定義する（plan-template.md 参照）
 - `{project}/.claude/plan.md` に保存する
 - **承認不要。そのまま Phase 3 へ進む**
 
