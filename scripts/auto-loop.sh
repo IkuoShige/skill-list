@@ -238,7 +238,7 @@ while true; do
     export __AUTO_LOOP_ARG="/auto"
   fi
 
-  cd "$PROJECT_DIR" && script -qefc "$CLAUDE_CMD \"\$__AUTO_LOOP_ARG\"" "$LAST_OUTPUT_FILE"
+  cd "$PROJECT_DIR" && script -qefc "$CLAUDE_CMD -p \"\$__AUTO_LOOP_ARG\"" "$LAST_OUTPUT_FILE"
   EXIT_CODE=$?
   unset __AUTO_LOOP_ARG
 
