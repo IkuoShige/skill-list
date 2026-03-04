@@ -16,6 +16,12 @@ PLAN_FILE="$PROJECT_DIR/.claude/plan.md"
 LAST_OUTPUT_FILE="$PROJECT_DIR/.claude/auto-last-output.log"
 RATE_LIMIT_WAIT_FILE="$PROJECT_DIR/.claude/auto-rate-limit-wait.json"
 
+REMOTE_CONTROL="${AUTO_LOOP_REMOTE_CONTROL:-true}"
+CLAUDE_CMD="claude"
+if [[ "$REMOTE_CONTROL" == "true" ]]; then
+  CLAUDE_CMD="claude --remote-control"
+fi
+
 MAX_RESTARTS="${AUTO_LOOP_MAX_RESTARTS:-10}"
 NO_PROGRESS_LIMIT="${AUTO_LOOP_NO_PROGRESS_LIMIT:-4}"
 BASE_BACKOFF_SEC="${AUTO_LOOP_BASE_BACKOFF_SEC:-3}"
@@ -212,11 +218,11 @@ while true; do
     echo "--- Resuming from handoff ---"
     PROMPT="$(cat "$RESUME_FILE")"
     rm -f "$RESUME_FILE"
-    cd "$PROJECT_DIR" && claude "$PROMPT" 2>&1 | tee "$LAST_OUTPUT_FILE"
+    cd "$PROJECT_DIR" && $CLAUDE_CMD "$PROMPT" 2>&1 | tee "$LAST_OUTPUT_FILE"
     EXIT_CODE=${PIPESTATUS[0]}
   else
     echo "--- Starting /auto ---"
-    cd "$PROJECT_DIR" && claude "/auto" 2>&1 | tee "$LAST_OUTPUT_FILE"
+    cd "$PROJECT_DIR" && $CLAUDE_CMD "/auto" 2>&1 | tee "$LAST_OUTPUT_FILE"
     EXIT_CODE=${PIPESTATUS[0]}
   fi
 
