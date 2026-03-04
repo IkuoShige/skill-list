@@ -214,12 +214,12 @@ while true; do
     echo "--- Resuming from handoff ---"
     PROMPT="$(cat "$RESUME_FILE")"
     rm -f "$RESUME_FILE"
-    cd "$PROJECT_DIR" && $CLAUDE_CMD "$PROMPT" 2>&1 | tee "$LAST_OUTPUT_FILE"
-    EXIT_CODE=${PIPESTATUS[0]}
+    cd "$PROJECT_DIR" && script -qefc "$CLAUDE_CMD \"$PROMPT\"" "$LAST_OUTPUT_FILE"
+    EXIT_CODE=$?
   else
     echo "--- Starting /auto ---"
-    cd "$PROJECT_DIR" && $CLAUDE_CMD "/auto" 2>&1 | tee "$LAST_OUTPUT_FILE"
-    EXIT_CODE=${PIPESTATUS[0]}
+    cd "$PROJECT_DIR" && script -qefc "$CLAUDE_CMD \"/auto\"" "$LAST_OUTPUT_FILE"
+    EXIT_CODE=$?
   fi
 
   # If auto created resume, continue immediately with a short delay.
