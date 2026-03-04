@@ -22,10 +22,19 @@ MAX_RESTARTS="${AUTO_LOOP_MAX_RESTARTS:-10}"
 NO_PROGRESS_LIMIT="${AUTO_LOOP_NO_PROGRESS_LIMIT:-4}"
 BASE_BACKOFF_SEC="${AUTO_LOOP_BASE_BACKOFF_SEC:-3}"
 MAX_BACKOFF_SEC="${AUTO_LOOP_MAX_BACKOFF_SEC:-60}"
+MAX_RATE_LIMIT_WAIT="${AUTO_LOOP_MAX_RATE_LIMIT_WAIT:-1800}"
 FATAL_ERROR_REGEX="${AUTO_LOOP_FATAL_ERROR_REGEX:-(goal\.md not found|[Pp]ermission denied|Operation not permitted|ModuleNotFoundError|ImportError|SyntaxError|Traceback \(most recent call last\)|command not found)}"
 
 forced_restarts=0
 no_progress_count=0
+
+# --- Signal handling: restore terminal on exit ---
+cleanup() {
+  stty sane 2>/dev/null || true
+  echo ""
+  echo "[auto-loop] Cleaned up."
+}
+trap cleanup EXIT INT TERM
 
 is_non_negative_int() {
   [[ "$1" =~ ^[0-9]+$ ]]
@@ -36,6 +45,7 @@ clamp_numeric_config() {
   if ! is_non_negative_int "$NO_PROGRESS_LIMIT"; then NO_PROGRESS_LIMIT=4; fi
   if ! is_non_negative_int "$BASE_BACKOFF_SEC"; then BASE_BACKOFF_SEC=3; fi
   if ! is_non_negative_int "$MAX_BACKOFF_SEC"; then MAX_BACKOFF_SEC=60; fi
+  if ! is_non_negative_int "$MAX_RATE_LIMIT_WAIT"; then MAX_RATE_LIMIT_WAIT=1800; fi
   if (( MAX_BACKOFF_SEC < BASE_BACKOFF_SEC )); then
     MAX_BACKOFF_SEC="$BASE_BACKOFF_SEC"
   fi
@@ -51,7 +61,7 @@ plan_hash() {
 
 plan_has_incomplete_tasks() {
   if [[ ! -f "$PLAN_FILE" ]]; then
-    return 0
+    return 1
   fi
   # Status tokens: [ ] [>] [!]
   grep -Eq '^### Task .*\[( |>|!)\]' "$PLAN_FILE"
@@ -171,6 +181,11 @@ wait_for_rate_limit_reset() {
   now_epoch=$(date +%s)
   wait_sec=$(( reset_epoch - now_epoch ))
 
+  if (( wait_sec > MAX_RATE_LIMIT_WAIT )); then
+    echo "[Warn] Rate limit wait ${wait_sec}s exceeds cap ${MAX_RATE_LIMIT_WAIT}s. Clamping."
+    wait_sec="$MAX_RATE_LIMIT_WAIT"
+  fi
+
   if (( wait_sec > 0 )); then
     local reset_local
     reset_local=$(date -d "$resets_at" '+%Y-%m-%d %H:%M:%S %Z' 2>/dev/null || echo "$resets_at")
@@ -210,17 +225,22 @@ while true; do
 
   before_hash="$(plan_hash)"
 
+  # Use script(1) to preserve TTY for claude's TUI while capturing output.
+  # Arguments are passed via env var to prevent shell injection (the inner
+  # shell expands $__AUTO_LOOP_ARG inside double quotes — safe from splitting
+  # and glob, and never parsed as shell syntax).
   if [[ -f "$RESUME_FILE" ]]; then
     echo "--- Resuming from handoff ---"
-    PROMPT="$(cat "$RESUME_FILE")"
+    export __AUTO_LOOP_ARG="$(cat "$RESUME_FILE")"
     rm -f "$RESUME_FILE"
-    cd "$PROJECT_DIR" && script -qefc "$CLAUDE_CMD \"$PROMPT\"" "$LAST_OUTPUT_FILE"
-    EXIT_CODE=$?
   else
     echo "--- Starting /auto ---"
-    cd "$PROJECT_DIR" && script -qefc "$CLAUDE_CMD \"/auto\"" "$LAST_OUTPUT_FILE"
-    EXIT_CODE=$?
+    export __AUTO_LOOP_ARG="/auto"
   fi
+
+  cd "$PROJECT_DIR" && script -qefc "$CLAUDE_CMD \"\$__AUTO_LOOP_ARG\"" "$LAST_OUTPUT_FILE"
+  EXIT_CODE=$?
+  unset __AUTO_LOOP_ARG
 
   # If auto created resume, continue immediately with a short delay.
   if [[ -f "$RESUME_FILE" ]]; then
@@ -250,7 +270,7 @@ while true; do
   if should_force_restart "$EXIT_CODE"; then
     forced_restarts=$((forced_restarts + 1))
 
-    if (( forced_restarts > MAX_RESTARTS )); then
+    if (( forced_restarts >= MAX_RESTARTS )); then
       echo "=== Loop stopped: forced-restart limit reached ($MAX_RESTARTS) ==="
       echo "Last exit code: $EXIT_CODE"
       exit "$EXIT_CODE"

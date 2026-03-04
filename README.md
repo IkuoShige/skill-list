@@ -60,6 +60,7 @@ tar -xzf CodexBarCLI-v0.18.0-beta.3-linux-x86_64.tar.gz
 mv CodexBarCLI /usr/local/bin/codexbar
 chmod +x /usr/local/bin/codexbar
 rm CodexBarCLI-v0.18.0-beta.3-linux-x86_64.tar.gz
+apt update && apt install -y libsqlite3-0
 ```
 
 ### Codex側の設定（必須）
