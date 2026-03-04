@@ -16,11 +16,7 @@ PLAN_FILE="$PROJECT_DIR/.claude/plan.md"
 LAST_OUTPUT_FILE="$PROJECT_DIR/.claude/auto-last-output.log"
 RATE_LIMIT_WAIT_FILE="$PROJECT_DIR/.claude/auto-rate-limit-wait.json"
 
-REMOTE_CONTROL="${AUTO_LOOP_REMOTE_CONTROL:-true}"
-CLAUDE_CMD="claude"
-if [[ "$REMOTE_CONTROL" == "true" ]]; then
-  CLAUDE_CMD="claude --remote-control"
-fi
+CLAUDE_CMD="${AUTO_LOOP_CLAUDE_CMD:-claude}"
 
 MAX_RESTARTS="${AUTO_LOOP_MAX_RESTARTS:-10}"
 NO_PROGRESS_LIMIT="${AUTO_LOOP_NO_PROGRESS_LIMIT:-4}"
